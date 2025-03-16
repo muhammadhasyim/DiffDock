@@ -1,4 +1,4 @@
-name: diffdock
+name: drugscreening
 channels:
   - pyg
   - nvidia

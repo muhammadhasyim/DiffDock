@@ -208,9 +208,17 @@ class InferenceDataset(Dataset):
 
         try:
             # parse the receptor from the pdb file
+            print(f"\n[DEBUG] Processing complex {name}")
+            print(f"[DEBUG] Ligand description: {ligand_description}")
+            print(f"[DEBUG] Protein file: {protein_file}")
+            
             get_lig_graph_with_matching(mol, complex_graph, popsize=None, maxiter=None, matching=False, keep_original=False,
                                         num_conformers=1, remove_hs=self.remove_hs)
-
+            
+            print(f"[DEBUG] Ligand graph created successfully")
+            print(f"[DEBUG] Ligand graph nodes: {complex_graph['ligand'].num_nodes}")
+            print(f"[DEBUG] Ligand graph features shape: {complex_graph['ligand'].x.shape if hasattr(complex_graph['ligand'], 'x') else 'No features'}")
+            
             moad_extract_receptor_structure(
                 path=os.path.join(protein_file),
                 complex_graph=complex_graph,
@@ -221,10 +229,17 @@ class InferenceDataset(Dataset):
                 all_atoms=self.all_atoms,
                 atom_cutoff=self.atom_radius,
                 atom_max_neighbors=self.atom_max_neighbors)
-
+            
+            print(f"[DEBUG] Receptor structure extracted successfully")
+            print(f"[DEBUG] Receptor graph nodes: {complex_graph['receptor'].num_nodes}")
+            print(f"[DEBUG] Receptor graph features shape: {complex_graph['receptor'].x.shape if hasattr(complex_graph['receptor'], 'x') else 'No features'}")
+            
         except Exception as e:
             print(f'Skipping {name} because of the error:')
             print(e)
+            # Print more detailed error information
+            import traceback
+            traceback.print_exc()
             complex_graph['success'] = False
             return complex_graph
 

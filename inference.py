@@ -24,7 +24,7 @@ from rdkit import RDLogger
 from rdkit.Chem import RemoveAllHs
 
 # TODO imports are a little odd, utils seems to shadow things
-from utils.logging_utils import configure_logger, get_logger
+from utils.logging_utils import configure_logger, get_logger, LOGGER_NAME
 import utils.utils
 from datasets.process_mols import write_mol_with_coords
 from utils.download import download_and_extract
@@ -106,9 +106,15 @@ def get_parser():
 
 
 def main(args):
-
-    configure_logger(args.loglevel)
-    logger = get_logger()
+    # Initialize logger directly
+    logger = logging.getLogger(LOGGER_NAME)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s",
+                                    datefmt="%Y-%b-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.setLevel(args.loglevel.upper())
 
     if args.config:
         config_dict = yaml.load(args.config, Loader=yaml.FullLoader)
@@ -283,11 +289,30 @@ def main(args):
 
             # save predictions
             write_dir = f'{args.out_dir}/{complex_name_list[idx]}'
+            
+            # Create a list to store results for CSV
+            results = []
+            
             for rank, pos in enumerate(ligand_pos):
                 mol_pred = copy.deepcopy(lig)
-                if score_model_args.remove_hs: mol_pred = RemoveAllHs(mol_pred)
-                if rank == 0: write_mol_with_coords(mol_pred, pos, os.path.join(write_dir, f'rank{rank+1}.sdf'))
-                write_mol_with_coords(mol_pred, pos, os.path.join(write_dir, f'rank{rank+1}_confidence{confidence[rank]:.2f}.sdf'))
+                if score_model_args.remove_hs: 
+                    mol_pred = RemoveAllHs(mol_pred)
+                
+                # Save SDF with simple name
+                sdf_path = os.path.join(write_dir, f'rank{rank+1}.sdf')
+                write_mol_with_coords(mol_pred, pos, sdf_path)
+                
+                # Store result for CSV
+                results.append({
+                    'complex': complex_name_list[idx],
+                    'rank': rank + 1,
+                    'confidence': confidence[rank] if confidence is not None else None
+                })
+            
+            # Save results to CSV
+            results_df = pd.DataFrame(results)
+            csv_path = os.path.join(write_dir, 'docking_scores.csv')
+            results_df.to_csv(csv_path, index=False)
 
             # save visualisation frames
             if args.save_visualisation:

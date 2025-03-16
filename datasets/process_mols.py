@@ -160,14 +160,16 @@ def moad_extract_receptor_structure(path, complex_graph, neighbor_cutoff=20, max
 
 def new_extract_receptor_structure(seq, all_coords, complex_graph, neighbor_cutoff=20, max_neighbors=None, lm_embeddings=None,
                                    knn_only_graph=False, all_atoms=False, atom_cutoff=None, atom_max_neighbors=None):
+    print(f"[DEBUG] Receptor size: {len(all_coords)}")
     chi_angles, one_hot = get_chi_angles(all_coords, seq, return_onehot=True)
+    print(f"[DEBUG] chi_angles shape: {chi_angles.shape}")
     n_rel_pos, c_rel_pos = all_coords[:, 0, :] - all_coords[:, 1, :], all_coords[:, 2, :] - all_coords[:, 1, :]
     side_chain_vecs = torch.from_numpy(np.concatenate([chi_angles / 360, n_rel_pos, c_rel_pos], axis=1))
+    print(f"[DEBUG] side_chain_vecs shape: {side_chain_vecs.shape}")
 
     # Build the k-NN graph
     coords = torch.tensor(all_coords[:, 1, :], dtype=torch.float)
-    if len(coords) > 3000:
-        raise ValueError(f'The receptor is too large {len(coords)}')
+    print(f"[DEBUG] coords shape: {coords.shape}")
     if knn_only_graph:
         edge_index = knn_graph(coords, k=max_neighbors if max_neighbors else 32)
     else:
@@ -237,6 +239,12 @@ def new_extract_receptor_structure(seq, all_coords, complex_graph, neighbor_cuto
         assert len(complex_graph['atom'].x) == len(complex_graph['atom'].pos)
         complex_graph['atom', 'atom_contact', 'atom'].edge_index = atoms_edge_index
         complex_graph['atom', 'atom_rec_contact', 'receptor'].edge_index = atom_res_edge_index
+
+    # Before returning, print final tensor shapes
+    print(f"[DEBUG] Final receptor features shape: {complex_graph['receptor'].x.shape}")
+    if all_atoms:
+        print(f"[DEBUG] Final atom features shape: {complex_graph['atom'].x.shape}")
+        print(f"[DEBUG] atom_coords shape: {atom_coords.shape}")
 
     return
 

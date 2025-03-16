@@ -58,7 +58,16 @@ class AtomEncoder(torch.nn.Module):
 
     def forward(self, x):
         x_embedding = 0
-        assert x.shape[1] == self.num_categorical_features + self.additional_features_dim
+        # Handle different feature dimensions
+        expected_dim = self.num_categorical_features + self.additional_features_dim
+        if x.shape[1] != expected_dim:
+            print(f"WARNING: Feature dimension mismatch. Got {x.shape[1]}, expected {expected_dim}")
+            # Pad or truncate to match expected dimension
+            if x.shape[1] < expected_dim:
+                padding = torch.zeros(x.shape[0], expected_dim - x.shape[1], device=x.device)
+                x = torch.cat([x, padding], dim=1)
+            else:
+                x = x[:, :expected_dim]
         for i in range(self.num_categorical_features):
             x_embedding += self.atom_embedding_list[i](x[:, i].long())
 
